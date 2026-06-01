@@ -1,0 +1,7 @@
+certifi==2026.5.20
+charset-normalizer==3.4.7
+confluent-kafka==2.14.0
+idna==3.17
+psycopg2-binary==2.9.12
+requests==2.34.2
+urllib3==2.7.0
