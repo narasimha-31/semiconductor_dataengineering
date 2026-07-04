@@ -52,11 +52,21 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres:5432/${AIRFLOW_DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      PIPELINE_DB_HOST: postgres
+      PIPELINE_DB_PORT: '5432'
+      PIPELINE_DB_NAME: ${POSTGRES_DB}
+      PIPELINE_DB_USER: ${POSTGRES_USER}
+      PIPELINE_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      CENSUS_API_KEY: ${CENSUS_API_KEY}
+      _PIP_ADDITIONAL_REQUIREMENTS: confluent-kafka==2.4.0 jsonschema==4.22.0
+      PYTHONPATH: /opt/airflow
     entrypoint: /bin/bash
     command: -c "airflow db migrate && airflow users create --username admin --password ${AIRFLOW_ADMIN_PASSWORD} --firstname Narasimha --lastname Admin --role Admin --email admin@example.com"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
+      - ./producers:/opt/airflow/producers
 
   airflow-webserver:
     image: apache/airflow:2.9.3
@@ -71,6 +81,7 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
+      - ./producers:/opt/airflow/producers
 
   airflow-scheduler:
     image: apache/airflow:2.9.3
@@ -83,6 +94,7 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
+      - ./producers:/opt/airflow/producers
 
 volumes:
   semi_postgres_data:
