@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
+from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 default_args = {
     'retries': 3,
@@ -53,7 +54,13 @@ def dag_ingest_regulatory():
             batch_prefix='daily'
         )
 
-    drain_regulatory(ingest_recent_docs())
+    transform_regulatory = SQLExecuteQueryOperator(
+        task_id='transform_regulatory',
+        conn_id='pipeline_postgres',
+        sql='sql/transforms/bronze_to_silver_regulatory.sql'
+    )
+
+    drain_regulatory(ingest_recent_docs()) >> transform_regulatory
 
 
 @dag(
@@ -95,7 +102,13 @@ def dag_ingest_filings():
             batch_prefix='weekly'
         )
 
-    drain_filings(ingest_filings())
+    transform_filings = SQLExecuteQueryOperator(
+        task_id='transform_filings',
+        conn_id='pipeline_postgres',
+        sql='sql/transforms/bronze_to_silver_filings.sql'
+    )
+
+    drain_filings(ingest_filings()) >> transform_filings
 
 
 dag_ingest_regulatory()
