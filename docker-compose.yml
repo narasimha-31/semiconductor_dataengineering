@@ -59,6 +59,7 @@ services:
       PIPELINE_DB_PASSWORD: ${POSTGRES_PASSWORD}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       CENSUS_API_KEY: ${CENSUS_API_KEY}
+      SEC_USER_AGENT: ${SEC_USER_AGENT}
       _PIP_ADDITIONAL_REQUIREMENTS: confluent-kafka==2.4.0 jsonschema==4.22.0
       PYTHONPATH: /opt/airflow
     entrypoint: /bin/bash
