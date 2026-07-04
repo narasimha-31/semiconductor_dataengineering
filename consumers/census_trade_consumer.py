@@ -21,14 +21,16 @@ INSERT_SQL = """
 """
 
 
-def get_connection():
-    return psycopg2.connect(
-        host='localhost',
-        port=int(os.getenv('POSTGRES_PORT')),
-        dbname=os.getenv('POSTGRES_DB'),
-        user=os.getenv('POSTGRES_USER'),
-        password=os.getenv('POSTGRES_PASSWORD')
-    )
+def get_connection(db_config=None):
+    if db_config is None:
+        db_config = {
+            'host': 'localhost',
+            'port': int(os.getenv('POSTGRES_PORT')),
+            'dbname': os.getenv('POSTGRES_DB'),
+            'user': os.getenv('POSTGRES_USER'),
+            'password': os.getenv('POSTGRES_PASSWORD')
+        }
+    return psycopg2.connect(**db_config)
 
 
 def insert_batch(conn, consumer, batch, batch_id, stats):
@@ -55,19 +57,19 @@ def insert_batch(conn, consumer, batch, batch_id, stats):
     stats['duplicates'] += len(rows) - inserted
 
 
-def main():
-    batch_id = f"backfill-{uuid.uuid4().hex[:8]}"
+def run_consumer(bootstrap_servers='localhost:9092', db_config=None,
+                 batch_prefix='backfill'):
+    batch_id = f"{batch_prefix}-{uuid.uuid4().hex[:8]}"
     stats = {'consumed': 0, 'inserted': 0, 'duplicates': 0}
 
     consumer = Consumer({
-        'bootstrap.servers': 'localhost:9092',
+        'bootstrap.servers': bootstrap_servers,
         'group.id': 'bronze-trade-writer',
         'auto.offset.reset': 'earliest',
         'enable.auto.commit': False
     })
     consumer.subscribe([TOPIC])
-
-    conn = get_connection()
+    conn = get_connection(db_config)
     batch = []
     idle_seconds = 0
 
@@ -102,7 +104,7 @@ def main():
 
     print(f"Done. Consumed: {stats['consumed']}, Inserted: {stats['inserted']}, "
           f"Duplicates skipped: {stats['duplicates']}")
-
+    
 
 if __name__ == "__main__":
-    main()
+    run_consumer()

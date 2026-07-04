@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
+from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 
 default_args = {
     'retries': 3,
@@ -14,6 +15,7 @@ default_args = {
     schedule='0 6 15 * *',
     start_date=datetime(2026, 6, 1),
     catchup=False,
+    max_active_runs=1,
     default_args=default_args,
     tags=['ingestion', 'census']
 )
@@ -34,13 +36,54 @@ def dag_ingest_trade():
         )
 
         if stats['sent'] == 0 and stats['dlq'] == 0:
-            raise ValueError(f"No rows returned for {target_month} - "
-                             "data may not be published yet")
+            raise ValueError(f"No rows returned for {target_month}")
         if stats['failed'] > 0:
             raise ValueError(f"{stats['failed']} Kafka deliveries failed")
-        return stats
+        return {'target_month': target_month, 'delivered': stats['delivered']}
 
-    ingest_latest_month()
+    @task
+    def drain_to_bronze(producer_result):
+        import psycopg2
+        from consumers.census_trade_consumer import run_consumer
+
+        db_config = {
+            'host': os.getenv('PIPELINE_DB_HOST'),
+            'port': int(os.getenv('PIPELINE_DB_PORT')),
+            'dbname': os.getenv('PIPELINE_DB_NAME'),
+            'user': os.getenv('PIPELINE_DB_USER'),
+            'password': os.getenv('PIPELINE_DB_PASSWORD')
+        }
+        run_consumer(
+            bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS'),
+            db_config=db_config,
+            batch_prefix='monthly'
+        )
+
+        conn = psycopg2.connect(**db_config)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) FROM bronze.trade_raw WHERE month = %s",
+                (producer_result['target_month'],)
+            )
+            bronze_count = cursor.fetchone()[0]
+        conn.close()
+
+        expected = producer_result['delivered']
+        print(f"Bronze holds {bronze_count} rows for "
+              f"{producer_result['target_month']}, producer fetched {expected}")
+        if bronze_count < expected:
+            raise ValueError(f"Bronze has {bronze_count} rows for month "
+                             f"{producer_result['target_month']} but producer "
+                             f"delivered {expected} - data missing")
+        return {'bronze_rows_for_month': bronze_count}
+
+    transform_silver = SQLExecuteQueryOperator(
+        task_id='transform_silver',
+        conn_id='pipeline_postgres',
+        sql='sql/transforms/bronze_to_silver_trade.sql'
+    )
+
+    drain_to_bronze(ingest_latest_month()) >> transform_silver
 
 
 dag_ingest_trade()
