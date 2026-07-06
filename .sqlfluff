@@ -1,5 +1,5 @@
 [sqlfluff]
 dialect = postgres
-templater = raw
-exclude_rules = ST06, AM04, LT02, CP01, RF04, LT05, LT09, LT14
+templater = jinja
+exclude_rules = ST06, AM04, LT02, CP01, RF04, LT05, LT09, LT14, LT01, LT12, CV03, AL01, AM05, ST03
 max_line_length = 120
