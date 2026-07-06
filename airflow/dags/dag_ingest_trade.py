@@ -83,7 +83,25 @@ def dag_ingest_trade():
         sql='sql/transforms/bronze_to_silver_trade.sql'
     )
 
-    drain_to_bronze(ingest_latest_month()) >> transform_silver
+    
+
+    @task
+    def ge_checkpoint():
+        from quality.ge_trade_suite import run_trade_checkpoint
+
+        db_config = {
+            'host': os.getenv('PIPELINE_DB_HOST'),
+            'port': os.getenv('PIPELINE_DB_PORT'),
+            'dbname': os.getenv('PIPELINE_DB_NAME'),
+            'user': os.getenv('PIPELINE_DB_USER'),
+            'password': os.getenv('PIPELINE_DB_PASSWORD')
+        }
+        stats = run_trade_checkpoint(db_config)
+        if not stats['success']:
+            raise ValueError(f"GE gate failed: {stats['failed']} expectations violated")
+        return stats
+
+    drain_to_bronze(ingest_latest_month()) >> ge_checkpoint() >> transform_silver
 
 
 dag_ingest_trade()
