@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: int_monthly_country_share
+    columns:
+      - name: market_share
+        tests:
+          - not_null
+
+  - name: mart_hhi_concentration
+    columns:
+      - name: hhi
+        tests:
+          - not_null
+      - name: concentration_band
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['highly concentrated', 'moderately concentrated', 'competitive']
+
+  - name: mart_regulatory_impact
+    columns:
+      - name: document_number
+        tests:
+          - not_null
+
+  - name: mart_company_signals
+    columns:
+      - name: ticker
+        tests:
+          - not_null

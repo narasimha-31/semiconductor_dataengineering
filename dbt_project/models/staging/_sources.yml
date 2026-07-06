@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: silver
+    database: semiconductor_db
+    schema: silver
+    tables:
+      - name: trade_cleaned
+      - name: regulatory_cleaned
+      - name: filings_cleaned
+      - name: reconciliation_totals

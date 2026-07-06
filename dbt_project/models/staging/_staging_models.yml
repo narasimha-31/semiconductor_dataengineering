@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: stg_trade
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+      - name: trade_value_usd
+        tests:
+          - not_null
+      - name: trade_month
+        tests:
+          - not_null
+
+  - name: stg_regulatory
+    columns:
+      - name: document_number
+        tests:
+          - not_null
+          - unique
+      - name: doc_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['Rule', 'Proposed Rule', 'Notice', 'Correction']
+                
+  - name: stg_filings
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['INTC', 'NVDA', 'AMD', 'MU', 'TXN',
+                       'QCOM', 'AVGO', 'GFS', 'TSM', 'ON']
+      - name: metric
+        tests:
+          - accepted_values:
+              values: ['revenue', 'capex', 'inventory']
