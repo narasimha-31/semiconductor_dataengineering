@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install ruff sqlfluff pytest jsonschema confluent-kafka \
+            requests python-dotenv dbt-core==1.10.13 dbt-postgres==1.10.2
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: SQLFluff lint dbt models
+        run: sqlfluff lint dbt_project/models --dialect postgres
+
+      - name: Pytest
+        run: pytest tests/test_producers.py -v
+
+      - name: dbt parse
+        run: |
+          cd dbt_project
+          dbt parse --profiles-dir . --target docker
+        env:
+          PIPELINE_DB_PASSWORD: dummy_for_parse
