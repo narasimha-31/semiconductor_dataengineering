@@ -1,0 +1,7 @@
+confluent-kafka==2.4.0
+jsonschema==4.22.0
+dbt-core==1.10.13
+dbt-postgres==1.10.2
+great-expectations[postgresql]==1.18.2
+google-cloud-bigquery==3.27.0
+pandas-gbq==0.28.0
