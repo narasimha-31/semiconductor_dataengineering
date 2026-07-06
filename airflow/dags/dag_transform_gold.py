@@ -1,6 +1,7 @@
+import os
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag
+from airflow.decorators import dag, task
 from airflow.operators.bash import BashOperator
 
 default_args = {
@@ -18,7 +19,7 @@ DBT_DIR = '/opt/airflow/dbt_project'
     catchup=False,
     max_active_runs=1,
     default_args=default_args,
-    tags=['transform', 'dbt']
+    tags=['transform', 'dbt', 'bigquery']
 )
 def dag_transform_gold():
 
@@ -32,7 +33,20 @@ def dag_transform_gold():
         bash_command=f'cd {DBT_DIR} && dbt test --target docker --profiles-dir {DBT_DIR}'
     )
 
-    dbt_run >> dbt_test
+    @task
+    def sync_to_bigquery():
+        from sync.bq_sync import sync_marts
+
+        db_config = {
+            'host': os.getenv('PIPELINE_DB_HOST'),
+            'port': int(os.getenv('PIPELINE_DB_PORT')),
+            'dbname': os.getenv('PIPELINE_DB_NAME'),
+            'user': os.getenv('PIPELINE_DB_USER'),
+            'password': os.getenv('PIPELINE_DB_PASSWORD')
+        }
+        return sync_marts(db_config=db_config)
+
+    dbt_run >> dbt_test >> sync_to_bigquery()
 
 
 dag_transform_gold()
