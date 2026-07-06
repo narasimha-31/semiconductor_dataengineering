@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 100
+exclude = ["env", "dbt_project/target", "airflow/logs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

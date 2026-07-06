@@ -24,7 +24,7 @@ if response.status_code == 200:
     print(f"Type of data: {type(data)}")
     print(f"Number of rows: {len(data)}")
     print(f"Type of first row: {type(data[0])}")
-    print(f"\n--- First 10 rows ---")
+    print("\n--- First 10 rows ---")
     for row in data[:10]:
         print(row)
 else:

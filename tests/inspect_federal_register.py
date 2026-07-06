@@ -1,5 +1,4 @@
 import requests
-import json
 
 BASE_URL = 'https://www.federalregister.gov/api/v1/documents.json'
 
@@ -20,7 +19,7 @@ if isinstance(data, dict):
         print(f"Total matching documents: {data.get('count')}")
         print(f"Records in this page: {len(data['results'])}")
         first = data['results'][0]
-        print(f"\nFields in one record:")
+        print("\nFields in one record:")
         for key, value in first.items():
             preview = str(value)[:80]
             print(f"  {key}: {preview}")
