@@ -17,5 +17,5 @@ select
     t.trade_value_usd::numeric / nullif(m.month_total_usd, 0) as market_share
 from {{ ref('stg_trade') }} t
 join monthly_totals m
-  on m.hs_code = t.hs_code
- and m.trade_month = t.trade_month
+  on t.hs_code = m.hs_code
+ and t.trade_month = m.trade_month
