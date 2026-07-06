@@ -19,3 +19,6 @@ venv/
 airflow/logs/
 logs/
 dbt_project/.user.yml
+
+
+secrets/
