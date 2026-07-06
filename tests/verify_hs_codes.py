@@ -31,11 +31,11 @@ for code in codes_to_check:
                 for row in data[1:]:
                     try:
                         total_value += int(row[2])
-                    except:
+                    except Exception:
                         pass
                 print(f"  {data[1][0]} - {data[1][1]}")
                 print(f"    Countries: {row_count}, Total import value: ${total_value:,}")
-        except:
+        except Exception:
             print(f"  {code} - response not parseable")
     else:
         print(f"  {code} - no data")

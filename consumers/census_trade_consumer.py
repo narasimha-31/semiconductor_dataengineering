@@ -104,7 +104,7 @@ def run_consumer(bootstrap_servers='localhost:9092', db_config=None,
 
     print(f"Done. Consumed: {stats['consumed']}, Inserted: {stats['inserted']}, "
           f"Duplicates skipped: {stats['duplicates']}")
-    
+
 
 if __name__ == "__main__":
     run_consumer()

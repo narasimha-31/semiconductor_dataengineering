@@ -83,7 +83,7 @@ def dag_ingest_trade():
         sql='sql/transforms/bronze_to_silver_trade.sql'
     )
 
-    
+
 
     @task
     def ge_checkpoint():
