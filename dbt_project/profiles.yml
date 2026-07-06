@@ -1,0 +1,21 @@
+semiconductor:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: semi_user
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"
+      dbname: semiconductor_db
+      schema: gold
+      threads: 4
+    docker:
+      type: postgres
+      host: postgres
+      port: 5432
+      user: semi_user
+      password: "{{ env_var('PIPELINE_DB_PASSWORD') }}"
+      dbname: semiconductor_db
+      schema: gold
+      threads: 4
