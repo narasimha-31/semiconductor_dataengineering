@@ -18,9 +18,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ruff sqlfluff pytest jsonschema confluent-kafka \
-            requests python-dotenv dbt-core==1.10.13 dbt-postgres==1.10.2
-
+          pip install ruff==0.15.20 sqlfluff==4.2.2 pytest jsonschema confluent-kafka \
+            requests python-dotenv dbt-core==1.10.13 dbt-postgres==1.10.2 \
+            openai google-cloud-bigquery
       - name: Ruff lint
         run: ruff check .
 
@@ -28,7 +28,7 @@ jobs:
         run: sqlfluff lint dbt_project/models --dialect postgres
 
       - name: Pytest
-        run: pytest tests/test_producers.py -v
+        run: pytest tests/ -v
 
       - name: dbt parse
         run: |
