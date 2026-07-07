@@ -3,9 +3,10 @@ import re
 from dotenv import load_dotenv
 from openai import OpenAI
 from google.cloud import bigquery
+from pathlib import Path
 
 load_dotenv()
-from pathlib import Path
+
 
 _cred = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 if _cred and not os.path.isabs(_cred):
@@ -137,7 +138,7 @@ def validate_sql(sql):
 
 
 def generate_sql(question):
-    response = client.chat.completions.create(
+    response = get_llm().chat.completions.create(
         model=MODEL,
         temperature=0,
         messages=[
@@ -149,12 +150,12 @@ def generate_sql(question):
 
 
 def run_query(sql):
-    job = bq.query(sql)
+    job = get_bq().query(sql)
     return [dict(row) for row in job.result()]
 
 
 def summarize(question, rows):
-    response = client.chat.completions.create(
+    response = get_llm().chat.completions.create(
         model=MODEL,
         temperature=0,
         messages=[
