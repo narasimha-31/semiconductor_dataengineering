@@ -1,11 +1,12 @@
 INSERT INTO silver.filings_cleaned
     (ticker, cik, taxonomy, metric, tag, period_end, value_usd, form,
-     fiscal_year, fiscal_period, filed_date, source_batch_id)
+     period_type, fiscal_year, fiscal_period, filed_date, source_batch_id)
 SELECT
     ticker, cik, taxonomy, metric, tag,
     TO_DATE(end_date, 'YYYY-MM-DD'),
     value,
     form,
+    period_type,
     fiscal_year,
     fiscal_period,
     CASE WHEN filed ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'

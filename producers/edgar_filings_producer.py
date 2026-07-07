@@ -2,6 +2,7 @@ import os
 import json
 import time
 import requests
+from datetime import date
 from confluent_kafka import Producer
 from dotenv import load_dotenv
 from jsonschema import validate, ValidationError
@@ -50,12 +51,28 @@ MESSAGE_SCHEMA = {
         "end_date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
         "value": {"type": "number"},
         "form": {"type": "string"},
+        "period_type": {"type": "string", "enum": ["Q", "FY", "INSTANT"]},
         "fiscal_year": {"type": ["integer", "null"]},
         "fiscal_period": {"type": ["string", "null"]},
         "filed": {"type": ["string", "null"]}
     },
-    "required": ["ticker", "cik", "metric", "tag", "end_date", "value", "form"]
+    "required": ["ticker", "cik", "metric", "tag", "end_date", "value",
+                 "form", "period_type"]
 }
+
+
+def classify_period(start, end):
+    try:
+        s = date.fromisoformat(start)
+        e = date.fromisoformat(end)
+    except (TypeError, ValueError):
+        return None
+    days = (e - s).days
+    if 75 <= days <= 105:
+        return 'Q'
+    if 350 <= days <= 380:
+        return 'FY'
+    return 'OTHER'
 
 
 def fetch_company_facts(cik, user_agent):
@@ -79,10 +96,18 @@ def extract_metric_points(facts, taxonomy, metric):
             end = p.get('end')
             if not end or p.get('val') is None:
                 continue
+            if metric == 'inventory':
+                period_type = 'INSTANT'
+            else:
+                period_type = classify_period(p.get('start'), end)
+                if period_type not in ('Q', 'FY'):
+                    continue
             p['_tag'] = tag
+            p['_period_type'] = period_type
+            dedupe_key = (end, period_type)
             filed = p.get('filed') or ''
-            if end not in best or filed > (best[end].get('filed') or ''):
-                best[end] = p
+            if dedupe_key not in best or filed > (best[dedupe_key].get('filed') or ''):
+                best[dedupe_key] = p
     if not tags_used:
         return None, []
     return tags_used[0], list(best.values())
@@ -120,11 +145,12 @@ def run_ingestion(bootstrap_servers='localhost:9092'):
                     "end_date": p['end'],
                     "value": p['val'],
                     "form": p['form'],
+                    "period_type": p.get('_period_type'),
                     "fiscal_year": p.get('fy'),
                     "fiscal_period": p.get('fp'),
                     "filed": p.get('filed')
                 }
-                key = f"{ticker}-{metric}-{p['end']}"
+                key = f"{ticker}-{metric}-{p['end']}-{p.get('_period_type')}"
                 try:
                     validate(instance=message, schema=MESSAGE_SCHEMA)
                     producer.produce(topic=TOPIC, key=key,

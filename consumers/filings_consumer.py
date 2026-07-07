@@ -15,7 +15,7 @@ IDLE_TIMEOUT_SECONDS = 30
 INSERT_SQL = """
     INSERT INTO bronze.filings_raw
         (ticker, cik, taxonomy, metric, tag, end_date, value, form,
-         fiscal_year, fiscal_period, filed,
+         period_type, fiscal_year, fiscal_period, filed,
          kafka_partition, kafka_offset, batch_id)
     VALUES %s
     ON CONFLICT ON CONSTRAINT uq_filings_raw DO NOTHING
@@ -41,8 +41,8 @@ def insert_batch(conn, consumer, batch, batch_id, stats):
         rows.append((
             record['ticker'], record['cik'], record['taxonomy'],
             record['metric'], record['tag'], record['end_date'],
-            record['value'], record['form'], record['fiscal_year'],
-            record['fiscal_period'], record['filed'],
+            record['value'], record['form'], record.get('period_type'),
+            record['fiscal_year'], record['fiscal_period'], record['filed'],
             msg.partition(), msg.offset(), batch_id
         ))
     with conn.cursor() as cursor:

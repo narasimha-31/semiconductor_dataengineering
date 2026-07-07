@@ -5,6 +5,7 @@ select
     period_end,
     value_usd,
     form,
+    period_type,
     fiscal_year,
     fiscal_period,
     filed_date
