@@ -171,21 +171,3 @@ streamlit run chatbot/app.py
 ```
 
 Secrets live in .env and secrets/, both gitignored. I learned this the hard way in week one when an API key hit a public commit. Revoked it, rewrote history, and wrote the rule into the workflow: secrets before code, every time.
-
-## How this was built (the honest part)
-
-I come from data analysis. This project was my deliberate crossing into data engineering, and I built it with AI as a pair programmer and tutor, the way most working engineers use it now.
-
-What that actually looked like: I ran every command, hit every failure, and debugged them at the terminal. SIGTERM forensics when a compose restart killed a mid flight task. A midnight git history untangling. An XCom contract break. The fiscal period hunt above. The architectural calls are mine and I can defend each one without an AI in the room: recall over precision on the BIS filter (missing the October 2022 rule was unforgivable, storing extra notices costs a WHERE clause), truncate and reload over incremental sync (the marts are small, boring wins), scoped Great Expectations on one table instead of tool sprawl (four validation layers already existed, the fifth needed a reason).
-
-The judgment is the job. The typing never was.
-MDEOF
-echo written
-Output
-
-written
-
-Presented 2 files
-Done
-
-Usage limit reached ∙ Resets 2:30 AM
