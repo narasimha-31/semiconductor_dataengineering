@@ -169,5 +169,3 @@ docker compose up -d        # Kafka + Postgres + Airflow (custom image, boots in
 # http://localhost:8080 and unpause the DAGs
 streamlit run chatbot/app.py
 ```
-
-Secrets live in .env and secrets/, both gitignored. I learned this the hard way in week one when an API key hit a public commit. Revoked it, rewrote history, and wrote the rule into the workflow: secrets before code, every time.
