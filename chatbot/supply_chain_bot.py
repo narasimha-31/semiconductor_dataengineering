@@ -38,6 +38,7 @@ qualified names in backticks.
     (>2500 highly concentrated, 1500-2500 moderate, <1500 competitive)
   supplier_countries INT - countries shipping that month
   top_supplier_share FLOAT - largest single country share (0-1)
+  top_supplier_country STRING - name of the largest supplier that month
   concentration_band STRING - 'highly concentrated', 'moderately
     concentrated', 'competitive'
 
@@ -58,6 +59,9 @@ qualified names in backticks.
   capex_usd FLOAT - quarterly capital expenditure
   inventory_usd FLOAT - point-in-time inventory balance
   revenue_yoy_pct FLOAT - year-over-year QUARTERLY revenue change percent
+  inventory_yoy_pct FLOAT - year-over-year inventory change percent;
+    inventory growing much faster than revenue can signal demand
+    softening or stockpiling
 """
 
 FEW_SHOT = """
@@ -160,9 +164,11 @@ def summarize(question, rows):
         temperature=0,
         messages=[
             {'role': 'system', 'content':
-                'You are a supply chain analyst. Answer the question in 2-4 '
-                'sentences using ONLY the data provided. Cite numbers. If data '
-                'is empty, say no data was found. Never speculate beyond the rows.'},
+            'You are a supply chain analyst. Answer the question in 2-4 '
+            'sentences using ONLY the data provided. Cite numbers. Always state '
+            'the scope explicitly: these are US imports, in USD value, by HS '
+            'product category. If data is empty, say no data was found. Never '
+            'speculate beyond the rows.'},
             {'role': 'user', 'content':
                 f'Question: {question}\n\nQuery results:\n{rows[:50]}'}
         ]

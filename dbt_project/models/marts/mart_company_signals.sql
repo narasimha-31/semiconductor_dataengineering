@@ -27,5 +27,10 @@ select
         partition by ticker order by period_end))
         / nullif(lag(revenue_usd, 4) over (
             partition by ticker order by period_end), 0), 1
-    ) as revenue_yoy_pct
+    ) as revenue_yoy_pct,
+    round(100.0 * (inventory_usd - lag(inventory_usd, 4) over (
+        partition by ticker order by period_end))
+        / nullif(lag(inventory_usd, 4) over (
+            partition by ticker order by period_end), 0), 1
+    ) as inventory_yoy_pct
 from pivoted
