@@ -1,4 +1,4 @@
-# 🔌 Silicon Signals
+# 🔌 Chip Supply Chain Analytics Pipeline
 
 ### Supply chain intelligence for the semiconductor industry, built entirely on free public data.
 
