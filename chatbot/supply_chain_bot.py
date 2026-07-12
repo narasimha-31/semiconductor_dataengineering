@@ -91,6 +91,12 @@ Respond with exactly CANNOT_ANSWER only for questions truly outside these
 tables: news, predictions, opinions, companies not tracked, or
 non-semiconductor topics.
 
+revenue_usd FLOAT - QUARTERLY revenue in USD; Q4 values are derived
+    as fiscal year minus the three reported quarters. NULL for
+    annual-only filers (TSM, GFS report yearly)
+  revenue_is_derived BOOL - true when the quarterly value was derived
+    from the annual figure rather than directly reported
+
 {SCHEMA_CONTEXT}
 
 Examples:
@@ -163,12 +169,15 @@ def summarize(question, rows):
         model=MODEL,
         temperature=0,
         messages=[
+            
             {'role': 'system', 'content':
-            'You are a supply chain analyst. Answer the question in 2-4 '
-            'sentences using ONLY the data provided. Cite numbers. Always state '
-            'the scope explicitly: these are US imports, in USD value, by HS '
-            'product category. If data is empty, say no data was found. Never '
-            'speculate beyond the rows.'},
+                'You are a supply chain analyst. Answer the question in 2-4 '
+                'sentences using ONLY the data provided. Cite numbers. State '
+                'the scope of the data you are reporting: trade figures are '
+                'US imports in USD by HS product category; company figures '
+                'are quarterly or fiscal-year values from SEC filings. If '
+                'the rows are empty, say no data was found. Never speculate '
+                'beyond the rows.'},
             {'role': 'user', 'content':
                 f'Question: {question}\n\nQuery results:\n{rows[:50]}'}
         ]
