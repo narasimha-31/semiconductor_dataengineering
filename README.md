@@ -1,7 +1,3 @@
-ADME with detailed multi-branch architecture diagram and Q4 derivation updates
-bash
-
-rm /mnt/user-data/outputs/README.md && cat > /mnt/user-data/outputs/README.md << 'MDEOF'
 # 🔌 Chip Supply Chain Analytics Pipeline
 
 ### Supply chain analytics for the semiconductor industry, built entirely on free public data.
