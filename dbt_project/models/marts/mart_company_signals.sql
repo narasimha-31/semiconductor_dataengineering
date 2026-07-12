@@ -20,9 +20,9 @@ q4_derived as (
         fy.revenue_fy_usd - sum(q.revenue_q_reported) as q4_revenue
     from pivoted fy
     join pivoted q
-      on q.ticker = fy.ticker
+      on fy.ticker = q.ticker
      and q.period_end > fy.period_end - interval '360 days'
-     and q.period_end < fy.period_end
+     and fy.period_end > q.period_end
      and q.revenue_q_reported is not null
     where fy.revenue_fy_usd is not null
     group by fy.ticker, fy.period_end, fy.revenue_fy_usd
@@ -41,8 +41,8 @@ completed as (
         p.inventory_usd
     from pivoted p
     left join q4_derived d
-      on d.ticker = p.ticker
-     and d.period_end = p.period_end
+      on p.ticker = d.ticker
+     and p.period_end = d.period_end
 )
 
 select
