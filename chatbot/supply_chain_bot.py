@@ -169,7 +169,6 @@ def summarize(question, rows):
         model=MODEL,
         temperature=0,
         messages=[
-
             {'role': 'system', 'content':
                 'You are a supply chain analyst. Answer the question in 2-4 '
                 'sentences using ONLY the data provided. Cite numbers. State '
