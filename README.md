@@ -1,6 +1,10 @@
+ADME with detailed multi-branch architecture diagram and Q4 derivation updates
+bash
+
+rm /mnt/user-data/outputs/README.md && cat > /mnt/user-data/outputs/README.md << 'MDEOF'
 # 🔌 Chip Supply Chain Analytics Pipeline
 
-### Supply chain intelligence for the semiconductor industry, built entirely on free public data.
+### Supply chain analytics for the semiconductor industry, built entirely on free public data.
 
 ![CI](https://github.com/narasimha-31/semiconductor_dataengineering/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
@@ -10,8 +14,6 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![BigQuery](https://img.shields.io/badge/GCP-BigQuery-4285F4?logo=googlecloud&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-chatbot-FF4B4B?logo=streamlit&logoColor=white)
-
-**Why this name:** the platform turns three streams of raw government data into three kinds of signals. Trade signals (who ships what, and how concentrated that is), regulatory signals (what happens when export rules change), and company signals (what supplier financials are quietly saying). Silicon is the domain. Signals is the job.
 
 **The problem it solves:** every company that depends on chips has the same blind spot. Which countries does our supply actually come from, and what happens to those flows when Washington changes the rules? The answers live in public US government data. Census publishes every import dollar, the Federal Register publishes every rule, the SEC publishes every filing. What is missing is the pipeline that makes them talk to each other. This repo is that pipeline.
 
@@ -28,39 +30,96 @@ Nobody wrote that answer. A chatbot generated the SQL, a guardrail vetted it, an
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph sources[US Government APIs]
+flowchart TB
+    subgraph gov[US Government APIs]
         A1[Census Trade]
         A2[Federal Register]
-        A3[SEC EDGAR]
+        A3[SEC EDGAR XBRL]
     end
 
-    subgraph docker[Docker · 6 Airflow DAGs orchestrate everything]
-        K[Kafka<br/>KRaft, dual listeners<br/>JSON Schema + DLQ]
-        B[(Bronze<br/>raw, all TEXT)]
-        S[(Silver<br/>typed · filtered · reconciled)]
-        G[(Gold<br/>HHI · impact windows · signals)]
-        GE{{Great Expectations<br/>gate}}
-        DBT[dbt<br/>7 models · 14 tests]
+    subgraph stream[Kafka · KRaft · dual listeners]
+        PROD[Producers<br/>JSON Schema validation<br/>XBRL period classification]
+        TOPICS[3 raw topics<br/>keyed, partitioned]
+        DLQK[dead letter topic]
     end
 
-    BQ[(BigQuery<br/>serving layer)]
-    BOT[Grok chatbot<br/>Streamlit · guardrails]
+    CONS[Idempotent consumers<br/>manual offset commits<br/>DB commit before Kafka commit]
 
-    A1 --> K
-    A2 --> K
-    A3 --> K
-    K -->|idempotent consumers| B
-    B --> GE --> S
-    S --> DBT --> G
-    G -->|row-count verified sync| BQ
-    BQ --> BOT
+    subgraph pg[PostgreSQL medallion warehouse]
+        B[(BRONZE<br/>raw TEXT · lineage columns<br/>unique constraints)]
+        GE{{Great Expectations gate<br/>9 expectations, blocks promotion}}
+        S[(SILVER<br/>typed · aggregate-filtered<br/>standardized)]
+        SDLQ[(silver DLQ<br/>quarantined failures)]
+        REC[(reconciliation table<br/>vs government totals · 0.00%)]
+    end
+
+    subgraph dbtg[dbt · 7 models · 14 tests · lineage docs]
+        STG[staging views]
+        INT[intermediate<br/>monthly market share]
+        M1[mart: HHI concentration<br/>+ top supplier named]
+        M2[mart: regulatory impact<br/>3-month windows]
+        M3[mart: company signals<br/>Q4 derived from FY]
+    end
+
+    SYNC[BigQuery sync<br/>row-count verified]
+    BQ[(BigQuery<br/>semi_gold serving layer)]
+
+    subgraph bot[Serving · Streamlit chatbot]
+        Q[plain-English question]
+        GEN[Grok · temperature 0<br/>writes SQL from schema]
+        GUARD{{guardrails<br/>SELECT-only · table allowlist<br/>keyword scan · LIMIT bolt-on}}
+        SUM[Grok summarizes rows<br/>scope-labeled answer]
+    end
+
+    subgraph ops[Always watching]
+        AF[6 Airflow DAGs<br/>schedules · retries · catchup rules]
+        HC[hourly health check<br/>row counts · DLQ depth · drift alarm]
+        CI[GitHub Actions CI<br/>ruff · sqlfluff · 13 pytest · dbt parse<br/>branch protection on main]
+    end
+
+    A1 --> PROD
+    A2 --> PROD
+    A3 --> PROD
+    PROD -->|valid| TOPICS
+    PROD -->|invalid| DLQK
+    TOPICS --> CONS
+    CONS -->|ON CONFLICT DO NOTHING| B
+    B --> GE
+    GE -->|pass| S
+    B -->|API total rows| REC
+    S -.->|failed casts| SDLQ
+    S --> STG
+    STG --> INT
+    INT --> M1
+    STG --> M2
+    STG --> M3
+    M1 --> SYNC
+    M2 --> SYNC
+    M3 --> SYNC
+    SYNC --> BQ
+    Q --> GEN
+    GEN --> GUARD
+    GUARD -->|approved SQL only| BQ
+    BQ --> SUM
+
+    AF -.->|orchestrates| stream
+    AF -.->|orchestrates| pg
+    AF -.->|runs daily| dbtg
+    HC -.->|monitors| pg
+    HC -.->|watches depth| DLQK
+    CI -.->|gates every PR| dbtg
 
     style B fill:#8B4513,color:#fff
     style S fill:#A8A9AD,color:#000
-    style G fill:#DAA520,color:#000
+    style M1 fill:#DAA520,color:#000
+    style M2 fill:#DAA520,color:#000
+    style M3 fill:#DAA520,color:#000
     style BQ fill:#4285F4,color:#fff
-    style BOT fill:#6b21a8,color:#fff
+    style GUARD fill:#b45309,color:#fff
+    style GE fill:#b45309,color:#fff
+    style DLQK fill:#7f1d1d,color:#fff
+    style SDLQ fill:#7f1d1d,color:#fff
+    style REC fill:#065f46,color:#fff
 ```
 
 Every tool earns its seat. Kafka decouples flaky government APIs from the database and gives me replay for free. Bronze stores exactly what the API sent, all TEXT, because Bronze is an evidence locker, not a database with opinions. Silver is where types, filters, and quarantine happen. dbt owns Silver to Gold because transforms belong in version control with tests. Great Expectations gates Bronze promotion with statistical checks dbt tests cannot express. BigQuery exists so the chatbot queries a cloud serving layer instead of my laptop.
@@ -71,7 +130,7 @@ Nothing here is a resume sticker. I dropped Power BI from the original plan beca
 
 | Persona | Their question | Where the answer lives |
 |---|---|---|
-| Procurement manager | How dependent are we on one country for memory chips, and is it getting better or worse? | `mart_hhi_concentration`, now with the top supplier named per month |
+| Procurement manager | How dependent are we on one country for memory chips, and is it getting better or worse? | `mart_hhi_concentration`, with the top supplier named per month |
 | Trade compliance analyst | When the October 2022 export controls landed, what actually happened to imports the next quarter? | `mart_regulatory_impact`, 3 month before and after windows per rule |
 | Strategy analyst | Are our suppliers building inventory faster than revenue is growing? | `mart_company_signals`, revenue and inventory YoY side by side |
 
@@ -139,14 +198,17 @@ The chatbot answered "which company leads the semiconductor business?" with NVDA
 
 That $215.9B was NVIDIA's full fiscal year, ranked against other companies' single quarters. Digging in: SEC XBRL facts carry a start and an end date, and my EDGAR producer had only kept the end. Quarterly, nine month year-to-date, and annual values were living in one column like they were the same thing.
 
-The fix touched all six layers: duration classification at the producer (75 to 105 days is a quarter, 350 to 380 is a fiscal year, YTD gets discarded entirely), a period_type column through Bronze and Silver, widened unique constraints, a re-pivoted mart with quarterly and fiscal year revenue honestly separated, a re-synced serving layer, and an updated schema prompt so the chatbot knows the difference.
+The fix touched all six layers: duration classification at the producer (75 to 105 days is a quarter, 350 to 380 is a fiscal year, YTD gets discarded entirely), a period_type column through Bronze and Silver, widened unique constraints, a re-pivoted mart, a re-synced serving layer, and an updated schema prompt so the chatbot knows the difference.
 
-The serving layer caught a bug in the ingestion layer. That is the whole argument for owning a pipeline end to end, in one anecdote. It happened twice more after that: a user question exposed that the HHI mart never named the top supplier, and another exposed that inventory growth had no YoY column to compare against revenue. Both fixed in dbt within minutes. The chatbot turned out to be the best QA tool the marts ever had.
+It kept happening, in the best way. A user question exposed that the HHI mart never named the top supplier. Another exposed that inventory growth had no YoY column to compare against revenue. A third exposed that Q4 revenue never appears in XBRL as a standalone quarter, it hides inside the annual figure, so the mart now derives Q4 as fiscal year minus the three reported quarters, with a flag marking derived values so they never masquerade as reported ones. All fixed in dbt within minutes each.
+
+The serving layer turned out to be the best QA tool the marts ever had. That is the whole argument for owning a pipeline end to end.
 
 ## What I would tell you in a design review (limitations)
 
 - **Correlation is not causation**, and the 2024 data proves confounders exist. Labeled accordingly everywhere.
 - **TSM and GFS** file annually under IFRS with no matching capex tags. Documented coverage gaps, their revenue lives in the fiscal year column.
+- **Q4 quarterly values are derived**, not reported, because XBRL annual filings do not carry a standalone fourth quarter. Every derived value carries a flag column.
 - **Census is country level.** Firm level trade is confidential, which is exactly why EDGAR is a separate source.
 - **Dev shortcuts, named:** no Airflow Fernet key yet, so connection secrets sit unencrypted at rest, and three near identical consumers want to become one parameterized module.
 
@@ -168,4 +230,4 @@ cp .env.example .env        # your keys: Census, SEC user agent, GCP, xAI
 docker compose up -d        # Kafka + Postgres + Airflow (custom image, boots in seconds)
 # http://localhost:8080 and unpause the DAGs
 streamlit run chatbot/app.py
-```
+``
